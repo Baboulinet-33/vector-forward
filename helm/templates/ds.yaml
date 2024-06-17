@@ -1,0 +1,268 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+  labels:
+    app.kubernetes.io/component: collector
+    app.kubernetes.io/instance: forwarder
+    app.kubernetes.io/managed-by: cluster-logging-operator
+    app.kubernetes.io/name: vector
+    app.kubernetes.io/part-of: cluster-logging
+    app.kubernetes.io/version: 5.9.0
+    component: collector
+    implementation: vector
+    logging-infra: forwarder
+    pod-security.kubernetes.io/enforce: privileged
+    provider: openshift
+    security.openshift.io/scc.podSecurityLabelSync: "false"
+    vector.dev/exclude: "true"
+  name: forwarder
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      component: collector
+      logging-infra: forwarder
+      provider: openshift
+  template:
+    metadata:
+      annotations:
+        target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+      labels:
+        app.kubernetes.io/component: collector
+        app.kubernetes.io/instance: forwarder
+        app.kubernetes.io/managed-by: cluster-logging-operator
+        app.kubernetes.io/name: vector
+        app.kubernetes.io/part-of: cluster-logging
+        app.kubernetes.io/version: 5.9.0
+        component: collector
+        implementation: vector
+        logging-infra: forwarder
+        pod-security.kubernetes.io/enforce: privileged
+        provider: openshift
+        security.openshift.io/scc.podSecurityLabelSync: "false"
+        vector.dev/exclude: "true"
+    spec:
+      containers:
+      - args:
+        - /usr/bin/run-vector.sh
+        command:
+        - sh
+        env:
+        - name: COLLECTOR_CONF_HASH
+          value: 2ea64eb63884848769f198d77098926a
+        - name: TRUSTED_CA_HASH
+          value: 32ab9f60b1a3d35ce7adf8500d8f2b39
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: NODE_IPV4
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: OPENSHIFT_CLUSTER_ID
+          value: 64d66108-37d2-4ebc-9707-dd168dca8912
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_IPS
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIPs
+        - name: https_proxy
+          value: http://192.168.103.70:8888
+        - name: http_proxy
+          value: http://192.168.103.70:8888
+        - name: no_proxy
+          value: elasticsearch,.apps.integ-infra-ocp.cncs2.minint.fr,.cluster.local,.pi2.minint.fr,.svc,10.128.0.0/14,127.0.0.1,169.254.169.254,172.30.0.0/16,192.168.103.0/24,api-int.integ-infra-ocp.cncs2.minint.fr,localhost
+        - name: VECTOR_LOG
+          value: WARN
+        - name: KUBERNETES_SERVICE_HOST
+          value: kubernetes.default.svc
+        - name: VECTOR_SELF_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        image: registry.redhat.io/openshift-logging/vector-rhel9@sha256:5fc0f6e6e2af1e32844233b8a3a59431d798411125e9e3a43507adacffc037a8
+        imagePullPolicy: IfNotPresent
+        name: collector
+        ports:
+        - containerPort: 24231
+          name: metrics
+          protocol: TCP
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - CHOWN
+            - DAC_OVERRIDE
+            - FOWNER
+            - FSETID
+            - KILL
+            - NET_BIND_SERVICE
+            - SETGID
+            - SETPCAP
+            - SETUID
+          readOnlyRootFilesystem: true
+          seLinuxOptions:
+            type: spc_t
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        # - mountPath: /etc/collector/metrics
+        #   name: forwarder-metrics
+        #   readOnly: true
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /var/log/containers
+          name: varlogcontainers
+          readOnly: true
+        - mountPath: /var/log/pods
+          name: varlogpods
+          readOnly: true
+        - mountPath: /var/log/journal
+          name: varlogjournal
+          readOnly: true
+        - mountPath: /var/log/audit
+          name: varlogaudit
+          readOnly: true
+        - mountPath: /var/log/ovn
+          name: varlogovn
+          readOnly: true
+        - mountPath: /var/log/oauth-apiserver
+          name: varlogoauthapiserver
+          readOnly: true
+        - mountPath: /var/log/oauth-server
+          name: varlogoauthserver
+          readOnly: true
+        - mountPath: /var/log/openshift-apiserver
+          name: varlogopenshiftapiserver
+          readOnly: true
+        - mountPath: /var/log/kube-apiserver
+          name: varlogkubeapiserver
+          readOnly: true
+        # - mountPath: /etc/pki/ca-trust/extracted/pem/
+        #   name: forwarder-trustbundle
+        #   readOnly: true
+        - mountPath: /etc/vector
+          name: config
+          readOnly: true
+        - mountPath: /var/lib/vector/openshift-logging/forwarder
+          name: datadir
+        - mountPath: /usr/bin/run-vector.sh
+          name: entrypoint
+          readOnly: true
+          subPath: run-vector.sh
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: vector
+      serviceAccountName: vector
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoSchedule
+        key: node.kubernetes.io/disk-pressure
+        operator: Exists
+      volumes:
+      # - name: forwarder-metrics
+      #   secret:
+      #     defaultMode: 420
+      #     secretName: forwarder-metrics
+      - emptyDir:
+          medium: Memory
+        name: tmp
+      - hostPath:
+          path: /var/log/containers
+          type: ""
+        name: varlogcontainers
+      - hostPath:
+          path: /var/log/pods
+          type: ""
+        name: varlogpods
+      - hostPath:
+          path: /var/log/journal
+          type: ""
+        name: varlogjournal
+      - hostPath:
+          path: /var/log/audit
+          type: ""
+        name: varlogaudit
+      - hostPath:
+          path: /var/log/ovn
+          type: ""
+        name: varlogovn
+      - hostPath:
+          path: /var/log/oauth-apiserver
+          type: ""
+        name: varlogoauthapiserver
+      - hostPath:
+          path: /var/log/oauth-server
+          type: ""
+        name: varlogoauthserver
+      - hostPath:
+          path: /var/log/openshift-apiserver
+          type: ""
+        name: varlogopenshiftapiserver
+      - hostPath:
+          path: /var/log/kube-apiserver
+          type: ""
+        name: varlogkubeapiserver
+      # - configMap:
+      #     defaultMode: 420
+      #     items:
+      #     - key: ca-bundle.crt
+      #       path: tls-ca-bundle.pem
+      #     name: forwarder-trustbundle
+      #   name: forwarder-trustbundle
+      - name: config
+        configMap:
+          defaultMode: 423
+          items:
+          - key: vector.toml
+            path: vector.toml
+          optional: true
+          name: forwarder-config
+        # secret:
+        #   defaultMode: 420
+        #   items:
+        #   - key: vector.toml
+        #     path: vector.toml
+        #   optional: true
+        #   secretName: forwarder-config
+      - hostPath:
+          path: /var/lib/vector/openshift-logging/forwarder
+          type: ""
+        name: datadir
+      - name: entrypoint
+        configMap:
+          defaultMode: 420
+          items:
+          - key: run-vector.sh
+            path: run-vector.sh
+          optional: true
+          name: forwarder-config
+      # - name: entrypoint
+      #   secret:
+      #     defaultMode: 420
+      #     items:
+      #     - key: run-vector.sh
+      #       path: run-vector.sh
+      #     optional: true
+      #     secretName: forwarder-config

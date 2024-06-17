@@ -1,0 +1,47 @@
+vector:
+  role: Stateless-Aggregator
+  fullnameOverride: vdebug
+  rbac:
+    create: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 200Mi
+    limits:
+      cpu: 100m
+      memory:  200Mi
+  persistence:
+    enabled: true
+    size: 10Gi
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - "ALL"
+  # - hostPath:
+  #     path: /var/lib/vector/openshift-logging/forwarder
+  #     type: ""
+  #   name: datadir
+  # extraVolumeMounts:
+  # - mountPath: /vector-data-dir
+  #   name: datadir
+  customConfig:
+    expire_metrics_secs: 60
+    data_dir: /vector-data-dir
+    api:
+      enabled: true
+      address: 127.0.0.1:8686
+    sources:
+      internal_metrics:
+        type: internal_metrics
+      http_in:
+        type: http_server
+        address: 0.0.0.0:8080
+    sinks:
+      debug:
+        type: console
+        inputs:
+        - http_in
+        encoding: 
+          codec: raw_message

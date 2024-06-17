@@ -1,14 +1,8 @@
-forwarder:
-  appLogs: '["/var/log/pods/mi-*/*/*.log"]'
-
 vector:
   role: Agent
   fullnameOverride: vector
   rbac:
     create: false
-  image:
-    repository: registry.redhat.io/openshift-logging/vector-rhel9
-    # tag: "5fc0f6e6e2af1e32844233b8a3a59431d798411125e9e3a43507adacffc037a8"
   persistence:
     enabled: true
     size: 10Gi
