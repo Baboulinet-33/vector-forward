@@ -1,5 +1,6 @@
 forwarder:
-  appLogs: '["/var/log/pods/mi-*/*/*.log"]'
+  appLogs: ["/var/log/pods/mi-*/*/*.log"]
+  endpoint: "http://vdebug.infra-vector.svc.cluster.local:8080"
 
 vector:
   role: Agent
